@@ -182,6 +182,7 @@ proc groups(search: string = "", corpus: string = "", limit: int = 0) =
 proc schedule(
     group: string,
     today: bool = false,
+    tommorow: bool = false,
     date: string = "",
     week: bool = false,
     teachers: bool = false,
@@ -200,6 +201,13 @@ proc schedule(
       let todaySchedule = client.getTodaySchedule(group)
       if todaySchedule.isSome:
         printScheduleDay(todaySchedule.get(), showHeader = true)
+      else:
+        printWarning("Расписания на сегодня нет 🎉")
+    elif tommorow:
+      printHeader(&"🎯 Завтра | Группа: {group}")
+      let tommorowSchedule = client.getTommorowSchedule(group)
+      if tommorowSchedule.isSome:
+        printScheduleDay(tommorowSchedule.get(), showHeader = true)
       else:
         printWarning("Расписания на сегодня нет 🎉")
     elif date != "":
