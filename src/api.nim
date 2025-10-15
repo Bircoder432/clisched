@@ -12,6 +12,8 @@ type
     cabinet*: string
     teacher*: string
     distance*: bool
+    starts*: string
+    ends*: string
 
   ScheduleDay* = object
     date*: string
@@ -76,6 +78,8 @@ proc getSchedule*(client: ScheduleClient, group: string): seq[ScheduleDay] =
           cabinet: lessonData{"cabinet"}.getStr(""),
           teacher: lessonData{"teacher"}.getStr(""),
           distance: lessonData{"distance"}.getBool(false),
+          starts: data{"starts"}.getStr(""),
+          ends: data{"ends"}.getStr("")
         )
       )
 
@@ -113,7 +117,9 @@ proc getTodaySchedule*(client: ScheduleClient, group: string): Option[ScheduleDa
             name: lessonData{"name"}.getStr(""),
             cabinet: lessonData{"cabinet"}.getStr(""),
             teacher: lessonData{"teacher"}.getStr(""),
-            distance: lessonData{"distance"}.getBool(false)
+            distance: lessonData{"distance"}.getBool(false),
+            starts: data{"starts"}.getStr(""),
+            ends: data{"ends"}.getStr("")
           ))
 
       return some(day)
@@ -133,7 +139,9 @@ proc getTodaySchedule*(client: ScheduleClient, group: string): Option[ScheduleDa
           name: lessonData{"name"}.getStr(""),
           cabinet: lessonData{"cabinet"}.getStr(""),
           teacher: lessonData{"teacher"}.getStr(""),
-          distance: lessonData{"distance"}.getBool(false)
+          distance: lessonData{"distance"}.getBool(false),
+          starts: data{"starts"}.getStr(""),
+          ends: data{"ends"}.getStr("")
         ))
 
       return some(day)
@@ -142,6 +150,71 @@ proc getTodaySchedule*(client: ScheduleClient, group: string): Option[ScheduleDa
 
   except Exception as e:
     raise newException(ApiError, &"Ошибка при получении расписания на сегодня: {e.msg}")
+
+proc getTommorowSchedule*(client: ScheduleClient, group: string): Option[ScheduleDay] =
+  let url = client.baseUrl & "/schedule/" & encodeUrl(group) & "/tommorow"
+
+  try:
+    let response = client.client.get(url)
+
+    if response.code == Http404:
+      return none(ScheduleDay)
+
+    if response.code != Http200:
+      raise newException(ApiError, &"HTTP {response.code}: {response.status}")
+
+    let data = parseJson(response.body)
+
+    if data.kind == JObject:
+      var day = ScheduleDay(
+        date: data{"date"}.getStr(""),
+        group: data{"group"}.getStr(""),
+        starts: data{"starts"}.getStr(""),
+        ends: data{"ends"}.getStr(""),
+        lessons: @[]
+      )
+
+      let lessonsData = data{"lessons"}
+      if lessonsData.kind == JArray:
+        for lessonData in lessonsData:
+          day.lessons.add(Lesson(
+            name: lessonData{"name"}.getStr(""),
+            cabinet: lessonData{"cabinet"}.getStr(""),
+            teacher: lessonData{"teacher"}.getStr(""),
+            distance: lessonData{"distance"}.getBool(false),
+            starts: data{"starts"}.getStr(""),
+            ends: data{"ends"}.getStr("")
+          ))
+
+      return some(day)
+
+    elif data.kind == JArray and data.len > 0:
+      let dayData = data[0]
+      var day = ScheduleDay(
+        date: dayData{"date"}.getStr(""),
+        group: dayData{"group"}.getStr(""),
+        starts: dayData{"starts"}.getStr(""),
+        ends: dayData{"ends"}.getStr(""),
+        lessons: @[]
+      )
+
+      for lessonData in dayData{"lessons"}:
+        day.lessons.add(Lesson(
+          name: lessonData{"name"}.getStr(""),
+          cabinet: lessonData{"cabinet"}.getStr(""),
+          teacher: lessonData{"teacher"}.getStr(""),
+          distance: lessonData{"distance"}.getBool(false),
+          starts: data{"starts"}.getStr(""),
+          ends: data{"ends"}.getStr("")
+        ))
+
+      return some(day)
+
+    return none(ScheduleDay)
+
+  except Exception as e:
+    raise newException(ApiError, &"Ошибка при получении расписания на сегодня: {e.msg}")
+
 
 proc findGroups*(client: ScheduleClient, pattern: string): seq[Group] =
   let allGroups = client.getAllGroups()

@@ -56,7 +56,8 @@ proc formatDate(dateStr: string): string =
     let parsedDate = parse(dateStr, "yyyy-MM-dd'T'HH:mm:ss'Z'")
     let today = now()
     let dateOnly = format(parsedDate, "dd.MM.yyyy")
-    let dayName = case parsedDate.weekday
+    let dayName =
+      case parsedDate.weekday
       of dMon: "Пн"
       of dTue: "Вт"
       of dWed: "Ср"
@@ -92,6 +93,7 @@ proc formatLesson(lesson: Lesson, index: int): string =
   stdout.setForegroundColor(ColorCabinet)
   result &= &" {lesson.cabinet:10}"
   stdout.resetAttributes()
+
 
   if lesson.distance:
     stdout.setForegroundColor(ColorWarning)
@@ -129,13 +131,10 @@ proc printGroup(group: Group, index: int = -1): string =
 
   return result
 
-proc groups(
-  search: string = "",
-  corpus: string = "",
-  limit: int = 0
-) =
+proc groups(search: string = "", corpus: string = "", limit: int = 0) =
   let client = newScheduleClient()
-  defer: client.close()
+  defer:
+    client.close()
 
   try:
     if search != "":
@@ -144,56 +143,65 @@ proc groups(
       if foundGroups.len == 0:
         printWarning("Группы не найдены")
       else:
-        let groupsToShow = if limit > 0: foundGroups[0..<min(limit, foundGroups.len)] else: foundGroups
+        let groupsToShow =
+          if limit > 0:
+            foundGroups[0 ..< min(limit, foundGroups.len)]
+          else:
+            foundGroups
         for i, group in groupsToShow:
           printItem(printGroup(group, i))
         printSuccess(&"Найдено: {foundGroups.len} групп")
-
     elif corpus != "":
       printHeader(&"🏛 Группы в корпусе: '{corpus}'")
       let corpusGroups = client.getGroupsByCorpus(corpus)
       if corpusGroups.len == 0:
         printWarning("Группы не найдены")
       else:
-        let groupsToShow = if limit > 0: corpusGroups[0..<min(limit, corpusGroups.len)] else: corpusGroups
+        let groupsToShow =
+          if limit > 0:
+            corpusGroups[0 ..< min(limit, corpusGroups.len)]
+          else:
+            corpusGroups
         for i, group in groupsToShow:
           printItem(printGroup(group, i))
         printSuccess(&"Найдено: {corpusGroups.len} групп")
-
     else:
       printHeader("📋 Все группы")
       let allGroups = client.getAllGroups()
-      let groupsToShow = if limit > 0: allGroups[0..<min(limit, allGroups.len)] else: allGroups
+      let groupsToShow =
+        if limit > 0:
+          allGroups[0 ..< min(limit, allGroups.len)]
+        else:
+          allGroups
       for i, group in groupsToShow:
         printItem(printGroup(group, i))
       printSuccess(&"Всего: {allGroups.len} групп")
-
   except ApiError as e:
     printError(e.msg)
 
 proc schedule(
-  group: string,
-  today: bool = false,
-  date: string = "",
-  week: bool = false,
-  teachers: bool = false
+    group: string,
+    today: bool = false,
+    date: string = "",
+    week: bool = false,
+    teachers: bool = false,
 ) =
   if group == "":
     printError("Укажите группу")
     return
 
   let client = newScheduleClient()
-  defer: client.close()
+  defer:
+    client.close()
 
   try:
     if today:
       printHeader(&"🎯 Сегодня | Группа: {group}")
       let todaySchedule = client.getTodaySchedule(group)
       if todaySchedule.isSome:
-        printScheduleDay(todaySchedule.get(), showHeader = false)
+        printScheduleDay(todaySchedule.get(), showHeader = true)
       else:
         printWarning("Расписания на сегодня нет 🎉")
-
     elif date != "":
       printHeader(&"📅 {date} | Группа: {group}")
       let dateSchedule = client.getScheduleForDate(group, date)
@@ -201,7 +209,6 @@ proc schedule(
         printScheduleDay(dateSchedule.get(), showHeader = false)
       else:
         printWarning(&"Расписание на {date} не найдено")
-
     elif week:
       printHeader(&"📅 Текущая неделя | Группа: {group}")
       let weekSchedule = client.getCurrentWeekSchedule(group)
@@ -211,7 +218,6 @@ proc schedule(
         for day in weekSchedule:
           printScheduleDay(day)
         printSuccess(&"Дней с занятиями: {weekSchedule.len}")
-
     elif teachers:
       printHeader(&"👨‍🏫 Преподаватели | Группа: {group}")
       let schedule = client.getSchedule(group)
@@ -234,7 +240,6 @@ proc schedule(
           echo teacher
           stdout.resetAttributes()
         printSuccess(&"Всего преподавателей: {teachersSet.len}")
-
     else:
       printHeader(&"📅 Полное расписание | Группа: {group}")
       let fullSchedule = client.getSchedule(group)
@@ -244,7 +249,6 @@ proc schedule(
         for day in fullSchedule:
           printScheduleDay(day)
         printSuccess(&"Всего дней в расписании: {fullSchedule.len}")
-
   except ApiError as e:
     printError(e.msg)
 
@@ -258,19 +262,28 @@ proc version() =
   stdout.resetAttributes()
 
 dispatchMulti(
-  [groups, cmdName = "groups", help = {
-    "search": "🔍 Поиск групп по шаблону",
-    "corpus": "🏛 Фильтр по корпусу",
-    "limit": "📏 Ограничить количество вывода"
-  }],
-
-  [schedule, cmdName = "schedule", help = {
-    "group": "📝 Название группы (обязательно)",
-    "today": "🎯 Показать расписание на сегодня",
-    "date": "📅 Показать расписание на конкретную дату",
-    "week": "🗓️ Показать расписание на текущую неделю",
-    "teachers": "👨‍🏫 Показать всех преподавателей группы"
-  }],
-
-  [version, cmdName = "version"]
+  [
+    groups,
+    cmdName = "groups",
+    help = {
+      "search": "🔍 Поиск групп по шаблону",
+      "corpus": "🏛 Фильтр по корпусу",
+      "limit": "📏 Ограничить количество вывода",
+    },
+  ],
+  [
+    schedule,
+    cmdName = "schedule",
+    help = {
+      "group": "📝 Название группы (обязательно)",
+      "today": "🎯 Показать расписание на сегодня",
+      "date":
+        "📅 Показать расписание на конкретную дату",
+      "week":
+        "🗓️ Показать расписание на текущую неделю",
+      "teachers":
+        "👨‍🏫 Показать всех преподавателей группы",
+    },
+  ],
+  [version, cmdName = "version"],
 )
